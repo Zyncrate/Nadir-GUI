@@ -19,6 +19,8 @@ set(PROJECT_SOURCES
     src/selector.cpp
     src/mathutil.cpp
     src/sqlite3.c
+    app.rc
+    resources.qrc
 )
 
 include_directories(include)

@@ -13,6 +13,7 @@
 #include <QDialogButtonBox>
 #include <QEvent>
 #include <QMouseEvent>
+#include <QIcon>
 #include <algorithm>
 
 void loadDataFromDB();
@@ -20,34 +21,143 @@ void Categorize();
 void Filter(std::vector<Material>&allMaterials, std::vector<t_HC>&Hard_Constraints);
 void Selection_Method2(std::vector<Material>&Filtered_Materials, std::string objectives, std::string geometry, std::string constraint, bool option);
 
+// ── NADIR DARK THEME ─────────────────────────────────────────
 static const QString BASE_STYLE = R"(
-    QWidget       { background: #ffffff; color: #222222; font-size: 12px; }
-    QGroupBox     { font-size: 12px; font-weight: bold; color: #444444;
-                    border: 1px solid #dddddd; border-radius: 6px;
-                    margin-top: 10px; padding: 8px 6px 6px 6px; }
-    QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
-    QComboBox     { border: 1px solid #cccccc; border-radius: 4px;
-                    padding: 4px 8px; background: #fafafa;
-                    combobox-popup: 0; }
-    QComboBox:hover { border-color: #185FA5; }
+    QWidget {
+        background: #081120;
+        color: #F5F7FA;
+        font-size: 12px;
+        font-family: Arial, sans-serif;
+    }
+    QGroupBox {
+        font-size: 12px;
+        font-weight: bold;
+        color: #4FD1C5;
+        border: 1px solid #1a2a40;
+        border-radius: 6px;
+        margin-top: 10px;
+        padding: 8px 6px 6px 6px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 8px;
+        padding: 0 4px;
+        color: #4FD1C5;
+    }
+    QComboBox {
+        border: 1px solid #1a2a40;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background: #0d1e36;
+        color: #F5F7FA;
+        combobox-popup: 0;
+    }
+    QComboBox:hover { border-color: #6F7CFF; }
     QComboBox QAbstractItemView {
-                    border: 1px solid #cccccc;
-                    background: #ffffff;
-                    selection-background-color: #ddeeff;
-                    selection-color: #222222;
-                    outline: none; }
-    QLineEdit     { border: 1px solid #cccccc; border-radius: 4px;
-                    padding: 4px 8px; background: #fafafa; }
-    QLineEdit:focus { border-color: #185FA5; }
-    QLabel        { color: #555555; }
-    QPushButton   { border: 1px solid #cccccc; border-radius: 4px;
-                    padding: 5px 10px; background: #fafafa; }
-    QPushButton:hover   { background: #eeeeee; }
-    QPushButton:pressed { background: #e0e0e0; }
-    QListWidget   { border: 1px solid #dddddd; border-radius: 4px;
-                    background: #fafafa; font-size: 11px; }
-    QListWidget::item { padding: 4px 6px; border-bottom: 1px solid #eeeeee; }
-    QListWidget::item:selected { background: #ddeeff; color: #222222; }
+        border: 1px solid #1a2a40;
+        background: #0d1e36;
+        color: #F5F7FA;
+        selection-background-color: #6F7CFF;
+        selection-color: #ffffff;
+        outline: none;
+    }
+    QLineEdit {
+        border: 1px solid #1a2a40;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background: #0d1e36;
+        color: #F5F7FA;
+    }
+    QLineEdit:focus { border-color: #6F7CFF; }
+    QLineEdit::placeholder { color: #445566; }
+    QLabel { color: #a0aec0; }
+    QPushButton {
+        border: 1px solid #1a2a40;
+        border-radius: 4px;
+        padding: 5px 10px;
+        background: #0d1e36;
+        color: #F5F7FA;
+    }
+    QPushButton:hover   { background: #1a2a40; border-color: #6F7CFF; }
+    QPushButton:pressed { background: #6F7CFF; color: #ffffff; }
+    QListWidget {
+        border: 1px solid #1a2a40;
+        border-radius: 4px;
+        background: #0d1e36;
+        color: #F5F7FA;
+        font-size: 11px;
+    }
+    QListWidget::item {
+        padding: 4px 6px;
+        border-bottom: 1px solid #1a2a40;
+    }
+    QListWidget::item:selected {
+        background: #6F7CFF;
+        color: #ffffff;
+    }
+    QScrollBar:vertical {
+        width: 6px;
+        background: #081120;
+    }
+    QScrollBar::handle:vertical {
+        background: #1a2a40;
+        border-radius: 3px;
+    }
+    QScrollBar::add-line:vertical,
+    QScrollBar::sub-line:vertical { height: 0px; }
+)";
+
+static const QString TABLE_STYLE = R"(
+    QTableWidget {
+        background: #0a1628;
+        font-size: 12px;
+        border: none;
+        gridline-color: #1a2a40;
+        color: #F5F7FA;
+    }
+    QHeaderView::section {
+        background: #0d1e36;
+        color: #4FD1C5;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 6px;
+        border: none;
+        border-bottom: 1px solid #1a2a40;
+        border-right: 1px solid #1a2a40;
+    }
+    QTableWidget::item {
+        padding: 6px 10px;
+        color: #F5F7FA;
+        border-bottom: 1px solid #1a2a40;
+    }
+    QTableWidget::item:selected {
+        background: #6F7CFF;
+        color: #ffffff;
+    }
+    QTableWidget::item:alternate {
+        background: #0d1e36;
+    }
+)";
+
+static const QString DIALOG_STYLE = R"(
+    QDialog { background: #081120; }
+    QLabel  { font-size: 12px; color: #a0aec0; }
+    QGroupBox {
+        font-size: 12px; font-weight: bold; color: #4FD1C5;
+        border: 1px solid #1a2a40; border-radius: 6px;
+        margin-top: 10px; padding: 8px 6px 6px 6px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin; left: 8px;
+        padding: 0 4px; color: #4FD1C5;
+    }
+    QPushButton {
+        border: 1px solid #1a2a40; border-radius: 4px;
+        padding: 6px 20px; background: #0d1e36;
+        font-size: 12px; color: #F5F7FA;
+    }
+    QPushButton:hover { background: #1a2a40; border-color: #6F7CFF; }
+    QFrame { color: #1a2a40; }
 )";
 
 MainWindow::MainWindow(QWidget *parent)
@@ -55,7 +165,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    setWindowTitle("Material Selection Engine");
+    setWindowTitle("Nadir — Material Selection Engine");
+    setWindowIcon(QIcon(":/nadir.ico"));
     resize(1100, 700);
 
     loadDataFromDB();
@@ -68,16 +179,14 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// event filter — lets scroll area scroll normally but
-// passes mouse clicks through to comboboxes correctly
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
     if (obj == sideScroll->viewport()) {
         if (event->type() == QEvent::Wheel)
-            return false; // let scroll area handle wheel
+            return false;
         if (event->type() == QEvent::MouseButtonPress ||
             event->type() == QEvent::MouseButtonRelease)
-            return false; // pass clicks through
+            return false;
     }
     return QMainWindow::eventFilter(obj, event);
 }
@@ -85,23 +194,24 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 void MainWindow::setupUI()
 {
     QWidget *central = new QWidget(this);
-    central->setStyleSheet("background: #f5f5f5;");
+    central->setStyleSheet("background: #081120;");
     setCentralWidget(central);
 
     QHBoxLayout *root = new QHBoxLayout(central);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
-    // ── SIDEBAR inside QScrollArea ────────────────────────────
+    // ── SIDEBAR ───────────────────────────────────────────────
     sideScroll = new QScrollArea();
     sideScroll->setFixedWidth(300);
     sideScroll->setWidgetResizable(true);
     sideScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     sideScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     sideScroll->setStyleSheet(
-        "QScrollArea { border: none; border-right: 1px solid #dddddd; background:#ffffff; }"
-        "QScrollBar:vertical { width: 6px; background: #f0f0f0; }"
-        "QScrollBar::handle:vertical { background: #cccccc; border-radius: 3px; }"
+        "QScrollArea { border: none; border-right: 1px solid #1a2a40; background:#081120; }"
+        "QScrollBar:vertical { width: 6px; background: #081120; }"
+        "QScrollBar::handle:vertical { background: #1a2a40; border-radius: 3px; }"
+        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
         );
     sideScroll->viewport()->installEventFilter(this);
 
@@ -111,6 +221,24 @@ void MainWindow::setupUI()
     QVBoxLayout *sideLayout = new QVBoxLayout(sidebar);
     sideLayout->setContentsMargins(12, 12, 12, 12);
     sideLayout->setSpacing(10);
+
+    // logo + title row
+    QHBoxLayout *titleRow = new QHBoxLayout();
+    QLabel *logoText = new QLabel("NADIR");
+    logoText->setStyleSheet(
+        "font-size: 20px; font-weight: bold;"
+        "color: #6F7CFF; letter-spacing: 4px;");
+    QLabel *versionLabel = new QLabel("v1.0");
+    versionLabel->setStyleSheet("font-size: 10px; color: #445566;");
+    titleRow->addWidget(logoText);
+    titleRow->addStretch();
+    titleRow->addWidget(versionLabel);
+    sideLayout->addLayout(titleRow);
+
+    QFrame *titleLine = new QFrame();
+    titleLine->setFrameShape(QFrame::HLine);
+    titleLine->setStyleSheet("color: #1a2a40;");
+    sideLayout->addWidget(titleLine);
 
     // -- family filter --
     QGroupBox *familyGroup = new QGroupBox("Material Family");
@@ -161,9 +289,9 @@ void MainWindow::setupUI()
     maximizeBtn->setCheckable(true);
     minimizeBtn->setChecked(true);
     minimizeBtn->setStyleSheet(
-        "QPushButton:checked { background:#185FA5; color:white; border-color:#185FA5; }");
+        "QPushButton:checked { background:#6F7CFF; color:white; border-color:#6F7CFF; }");
     maximizeBtn->setStyleSheet(
-        "QPushButton:checked { background:#185FA5; color:white; border-color:#185FA5; }");
+        "QPushButton:checked { background:#6F7CFF; color:white; border-color:#6F7CFF; }");
     optRow->addWidget(minimizeBtn);
     optRow->addWidget(maximizeBtn);
     ashbyLayout->addLayout(optRow);
@@ -231,14 +359,17 @@ void MainWindow::setupUI()
     sideLayout->addWidget(constraintGroup);
     sideLayout->addSpacing(12);
 
-    // run button pinned at bottom of sidebar content
     runBtn = new QPushButton("Run Selection");
     runBtn->setFixedHeight(40);
     runBtn->setStyleSheet(R"(
-        QPushButton { background:#185FA5; color:white; font-size:13px;
-                      font-weight:bold; border-radius:6px; border:none; }
-        QPushButton:hover   { background:#1a6dbf; }
-        QPushButton:pressed { background:#134d87; }
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #6F7CFF, stop:1 #4FD1C5);
+            color: white; font-size: 13px; font-weight: bold;
+            border-radius: 6px; border: none;
+        }
+        QPushButton:hover   { background: #6F7CFF; }
+        QPushButton:pressed { background: #4FD1C5; }
     )");
     sideLayout->addWidget(runBtn);
     sideLayout->addStretch();
@@ -246,9 +377,9 @@ void MainWindow::setupUI()
     sideScroll->setWidget(sidebar);
     root->addWidget(sideScroll);
 
-    // ── MAIN PANEL ───────────────────────────────────────────
+    // ── MAIN PANEL ────────────────────────────────────────────
     QWidget *mainPanel = new QWidget();
-    mainPanel->setStyleSheet("background:#f5f5f5;");
+    mainPanel->setStyleSheet("background:#081120;");
     QVBoxLayout *panelLayout = new QVBoxLayout(mainPanel);
     panelLayout->setContentsMargins(0, 0, 0, 0);
     panelLayout->setSpacing(0);
@@ -257,7 +388,7 @@ void MainWindow::setupUI()
     QWidget *statsBar = new QWidget();
     statsBar->setFixedHeight(52);
     statsBar->setStyleSheet(
-        "background:#ffffff; border-bottom:1px solid #dddddd;");
+        "background:#0a1628; border-bottom:1px solid #1a2a40;");
     QHBoxLayout *statsLayout = new QHBoxLayout(statsBar);
     statsLayout->setContentsMargins(16, 0, 16, 0);
     statsLayout->setSpacing(24);
@@ -265,10 +396,10 @@ void MainWindow::setupUI()
     totalLabel       = new QLabel("Total: 0");
     filteredLabel    = new QLabel("Filtered: 0");
     topMaterialLabel = new QLabel("Top material: —");
-    totalLabel->setStyleSheet("font-size:13px; color:#333333;");
-    filteredLabel->setStyleSheet("font-size:13px; color:#333333;");
+    totalLabel->setStyleSheet("font-size:13px; color:#a0aec0;");
+    filteredLabel->setStyleSheet("font-size:13px; color:#a0aec0;");
     topMaterialLabel->setStyleSheet(
-        "font-size:13px; font-weight:bold; color:#185FA5;");
+        "font-size:13px; font-weight:bold; color:#4FD1C5;");
 
     statsLayout->addWidget(totalLabel);
     statsLayout->addWidget(filteredLabel);
@@ -279,8 +410,8 @@ void MainWindow::setupUI()
     // hint
     QLabel *hint = new QLabel("  Click any row to view full material properties");
     hint->setStyleSheet(
-        "font-size:11px; color:#999999; background:#fafafa; "
-        "border-bottom:1px solid #eeeeee; padding:4px 12px;");
+        "font-size:11px; color:#445566; background:#081120;"
+        "border-bottom:1px solid #1a2a40; padding:4px 12px;");
     hint->setFixedHeight(24);
     panelLayout->addWidget(hint);
 
@@ -297,17 +428,7 @@ void MainWindow::setupUI()
     resultsTable->verticalHeader()->setVisible(false);
     resultsTable->setShowGrid(true);
     resultsTable->setCursor(Qt::PointingHandCursor);
-    resultsTable->setStyleSheet(R"(
-        QTableWidget { background:#ffffff; font-size:12px;
-                       border:none; gridline-color:#eeeeee; }
-        QHeaderView::section { background:#f0f0f0; color:#444444;
-                               font-size:11px; font-weight:bold;
-                               padding:6px; border:none;
-                               border-bottom:1px solid #dddddd; }
-        QTableWidget::item           { padding:6px 10px; color:#222222; }
-        QTableWidget::item:selected  { background:#ddeeff; color:#222222; }
-        QTableWidget::item:alternate { background:#fafafa; }
-    )");
+    resultsTable->setStyleSheet(TABLE_STYLE);
     panelLayout->addWidget(resultsTable);
     root->addWidget(mainPanel);
 
@@ -451,10 +572,11 @@ void MainWindow::populateTable()
         resultsTable->setItem(i, 4, item(QString::number(m.mech.density,  'f', 0)));
         resultsTable->setItem(i, 5, item(QString::number(m.performance_score, 'e', 4)));
 
+        // highlight top material with teal accent
         if (i == 0) {
             for (int col = 0; col < 6; col++)
                 resultsTable->item(i, col)->setBackground(
-                    QColor(0xdd, 0xee, 0xff));
+                    QColor(0x0d, 0x2a, 0x2a));
         }
     }
 }
@@ -468,20 +590,10 @@ void MainWindow::onTableRowClicked(int row, int /*column*/)
 void MainWindow::showMaterialDetail(const Material &m)
 {
     QDialog *dlg = new QDialog(this);
-    dlg->setWindowTitle(QString::fromStdString(m.name) + " — Full Properties");
-    dlg->setMinimumWidth(440);
-    dlg->setStyleSheet(R"(
-        QDialog   { background:#ffffff; }
-        QLabel    { font-size: 12px; color: #222222; }
-        QGroupBox { font-size: 12px; font-weight: bold; color: #444444;
-                    border: 1px solid #dddddd; border-radius: 6px;
-                    margin-top: 10px; padding: 8px 6px 6px 6px; }
-        QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
-        QPushButton { border: 1px solid #cccccc; border-radius: 4px;
-                      padding: 6px 20px; background: #fafafa;
-                      font-size: 12px; }
-        QPushButton:hover { background: #eeeeee; }
-    )");
+    dlg->setWindowTitle(QString::fromStdString(m.name) + " — Properties");
+    dlg->setWindowIcon(QIcon(":/nadir.ico"));
+    dlg->setMinimumWidth(460);
+    dlg->setStyleSheet(DIALOG_STYLE);
 
     QVBoxLayout *main = new QVBoxLayout(dlg);
     main->setSpacing(8);
@@ -489,15 +601,17 @@ void MainWindow::showMaterialDetail(const Material &m)
 
     // header
     QLabel *nameLabel = new QLabel(QString::fromStdString(m.name));
-    nameLabel->setStyleSheet("font-size:16px; font-weight:bold; color:#185FA5;");
-    QLabel *famLabel  = new QLabel("Family: " + QString::fromStdString(m.family));
-    famLabel->setStyleSheet("font-size:12px; color:#666666;");
+    nameLabel->setStyleSheet(
+        "font-size:16px; font-weight:bold; color:#6F7CFF;");
+    QLabel *famLabel = new QLabel("Family: " +
+                                  QString::fromStdString(m.family));
+    famLabel->setStyleSheet("font-size:12px; color:#4FD1C5;");
     main->addWidget(nameLabel);
     main->addWidget(famLabel);
 
     QFrame *line = new QFrame();
     line->setFrameShape(QFrame::HLine);
-    line->setStyleSheet("color:#dddddd;");
+    line->setStyleSheet("color:#1a2a40;");
     main->addWidget(line);
 
     auto addGroup = [&](const QString &title,
@@ -509,58 +623,60 @@ void MainWindow::showMaterialDetail(const Material &m)
         form->setHorizontalSpacing(24);
         for (const auto &r : rows) {
             QLabel *val = new QLabel(r.second);
-            val->setStyleSheet("color:#222222; font-weight:bold;");
+            val->setStyleSheet("color:#F5F7FA; font-weight:bold;");
             form->addRow(r.first + ":", val);
         }
         main->addWidget(grp);
     };
 
     addGroup("Mechanical", {
-                               {"Young's Modulus",     QString::number(m.mech.modulus,        'f', 1) + " GPa"},
-                               {"Density",             QString::number(m.mech.density,        'f', 0) + " kg/m³"},
-                               {"Tensile Strength",    QString::number(m.mech.tensileStrength,'f', 1) + " MPa"},
-                               {"Hardness",            QString::number(m.mech.hardness,       'f', 2) + " Mohs"},
-                               {"Poisson's Ratio",     QString::number(m.mech.p_ratio,        'f', 3)}
+                               {"Young's Modulus",  QString::number(m.mech.modulus,        'f',1) + " GPa"},
+                               {"Density",          QString::number(m.mech.density,        'f',0) + " kg/m³"},
+                               {"Tensile Strength", QString::number(m.mech.tensileStrength,'f',1) + " MPa"},
+                               {"Hardness",         QString::number(m.mech.hardness,       'f',2) + " Mohs"},
+                               {"Poisson's Ratio",  QString::number(m.mech.p_ratio,        'f',3)}
                            });
 
     addGroup("Thermal", {
-                            {"Conductivity",        QString::number(m.therm.conductivity,  'f', 2) + " W/mK"},
-                            {"Melting Point",       QString::number(m.therm.meltingpoint,  'f', 0) + " °C"},
-                            {"Thermal Expansion",   QString::number(m.therm.expansion,     'f', 2) + " ×10⁻⁶/K"},
-                            {"Heat Capacity",       QString::number(m.therm.heatcapacity,  'f', 1) + " J/kgK"}
+                            {"Conductivity",      QString::number(m.therm.conductivity, 'f',2) + " W/mK"},
+                            {"Melting Point",     QString::number(m.therm.meltingpoint, 'f',0) + " °C"},
+                            {"Thermal Expansion", QString::number(m.therm.expansion,    'f',2) + " ×10⁻⁶/K"},
+                            {"Heat Capacity",     QString::number(m.therm.heatcapacity, 'f',1) + " J/kgK"}
                         });
 
     addGroup("Electrical", {
-                               {"Resistivity",         QString::number(m.elec.resistivity,    'e', 3) + " Ω·m"},
-                               {"Dielectric Constant", QString::number(m.elec.d_constant,     'f', 2)}
+                               {"Resistivity",         QString::number(m.elec.resistivity, 'e',3) + " Ω·m"},
+                               {"Dielectric Constant", QString::number(m.elec.d_constant,  'f',2)}
                            });
 
     addGroup("Optical", {
-                            {"Refractive Index",    QString::number(m.optics.refractive_index, 'f', 3)},
-                            {"Transparency",        QString::fromStdString(m.optics.transparency)}
+                            {"Refractive Index", QString::number(m.optics.refractive_index,'f',3)},
+                            {"Transparency",     QString::fromStdString(m.optics.transparency)}
                         });
 
     addGroup("Chemical", {
                              {"Corrosion Resistance", QString::fromStdString(m.chem.corrosion_resistance)},
-                             {"pH Range",             QString::number(m.chem.ph_min, 'f', 1)
-                                              + " – " + QString::number(m.chem.ph_max, 'f', 1)}
+                             {"pH Range",             QString::number(m.chem.ph_min,'f',1)
+                                              + " – " + QString::number(m.chem.ph_max,'f',1)}
                          });
 
     QLabel *scoreLabel = new QLabel(
         "Performance Score:  " +
         QString::number(m.performance_score, 'e', 4));
     scoreLabel->setStyleSheet(
-        "font-size:13px; font-weight:bold; color:#185FA5; padding:8px 0;");
+        "font-size:13px; font-weight:bold; color:#4FD1C5; padding:8px 0;");
     main->addWidget(scoreLabel);
 
-    // close button with proper label
     QPushButton *closeBtn = new QPushButton("Close");
     closeBtn->setFixedWidth(100);
     closeBtn->setStyleSheet(R"(
-        QPushButton { background:#185FA5; color:white; font-size:12px;
-                      font-weight:bold; border-radius:4px; border:none;
-                      padding:6px 20px; }
-        QPushButton:hover { background:#1a6dbf; }
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #6F7CFF, stop:1 #4FD1C5);
+            color: white; font-size: 12px; font-weight: bold;
+            border-radius: 4px; border: none; padding: 6px 20px;
+        }
+        QPushButton:hover { background: #6F7CFF; }
     )");
     connect(closeBtn, &QPushButton::clicked, dlg, &QDialog::accept);
 
