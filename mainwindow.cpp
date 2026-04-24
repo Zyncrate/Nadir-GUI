@@ -7,7 +7,12 @@
 #include <QMessageBox>
 #include <QLabel>
 #include <QString>
-#include <QScrollArea>
+#include <QDialog>
+#include <QFormLayout>
+#include <QFrame>
+#include <QDialogButtonBox>
+#include <QEvent>
+#include <QMouseEvent>
 #include <algorithm>
 
 void loadDataFromDB();
@@ -51,7 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("Material Selection Engine");
-    resize(1100, 680);
+    resize(1100, 700);
 
     loadDataFromDB();
     Categorize();
@@ -61,6 +66,20 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+// event filter — lets scroll area scroll normally but
+// passes mouse clicks through to comboboxes correctly
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == sideScroll->viewport()) {
+        if (event->type() == QEvent::Wheel)
+            return false; // let scroll area handle wheel
+        if (event->type() == QEvent::MouseButtonPress ||
+            event->type() == QEvent::MouseButtonRelease)
+            return false; // pass clicks through
+    }
+    return QMainWindow::eventFilter(obj, event);
 }
 
 void MainWindow::setupUI()
@@ -73,15 +92,22 @@ void MainWindow::setupUI()
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
-    // ── SIDEBAR ──────────────────────────────────────────────
-    QScrollArea *scroll = new QScrollArea();
-    scroll->setFixedWidth(290);
-    scroll->setWidgetResizable(true);
-    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scroll->setStyleSheet("QScrollArea { border: none; border-right: 1px solid #dddddd; }");
+    // ── SIDEBAR inside QScrollArea ────────────────────────────
+    sideScroll = new QScrollArea();
+    sideScroll->setFixedWidth(300);
+    sideScroll->setWidgetResizable(true);
+    sideScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    sideScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    sideScroll->setStyleSheet(
+        "QScrollArea { border: none; border-right: 1px solid #dddddd; background:#ffffff; }"
+        "QScrollBar:vertical { width: 6px; background: #f0f0f0; }"
+        "QScrollBar::handle:vertical { background: #cccccc; border-radius: 3px; }"
+        );
+    sideScroll->viewport()->installEventFilter(this);
 
     QWidget *sidebar = new QWidget();
     sidebar->setStyleSheet(BASE_STYLE);
+
     QVBoxLayout *sideLayout = new QVBoxLayout(sidebar);
     sideLayout->setContentsMargins(12, 12, 12, 12);
     sideLayout->setSpacing(10);
@@ -192,7 +218,8 @@ void MainWindow::setupUI()
 
     constraintLayout->addWidget(new QLabel("Active constraints:"));
     constraintList = new QListWidget();
-    constraintList->setFixedHeight(100);
+    constraintList->setMinimumHeight(80);
+    constraintList->setMaximumHeight(160);
     constraintList->setToolTip("Select a constraint then click Remove to delete it");
     constraintLayout->addWidget(constraintList);
 
@@ -202,11 +229,11 @@ void MainWindow::setupUI()
             this, &MainWindow::onRemoveConstraintClicked);
 
     sideLayout->addWidget(constraintGroup);
-    sideLayout->addStretch();
+    sideLayout->addSpacing(12);
 
-    // run button
+    // run button pinned at bottom of sidebar content
     runBtn = new QPushButton("Run Selection");
-    runBtn->setFixedHeight(38);
+    runBtn->setFixedHeight(40);
     runBtn->setStyleSheet(R"(
         QPushButton { background:#185FA5; color:white; font-size:13px;
                       font-weight:bold; border-radius:6px; border:none; }
@@ -214,9 +241,10 @@ void MainWindow::setupUI()
         QPushButton:pressed { background:#134d87; }
     )");
     sideLayout->addWidget(runBtn);
+    sideLayout->addStretch();
 
-    scroll->setWidget(sidebar);
-    root->addWidget(scroll);
+    sideScroll->setWidget(sidebar);
+    root->addWidget(sideScroll);
 
     // ── MAIN PANEL ───────────────────────────────────────────
     QWidget *mainPanel = new QWidget();
@@ -248,11 +276,19 @@ void MainWindow::setupUI()
     statsLayout->addWidget(topMaterialLabel);
     panelLayout->addWidget(statsBar);
 
+    // hint
+    QLabel *hint = new QLabel("  Click any row to view full material properties");
+    hint->setStyleSheet(
+        "font-size:11px; color:#999999; background:#fafafa; "
+        "border-bottom:1px solid #eeeeee; padding:4px 12px;");
+    hint->setFixedHeight(24);
+    panelLayout->addWidget(hint);
+
     // results table
     resultsTable = new QTableWidget();
     resultsTable->setColumnCount(6);
     resultsTable->setHorizontalHeaderLabels(
-        {"#","Material","Family","E (GPa)","ρ (g/cm³)","Score"});
+        {"#","Material","Family","E (GPa)","ρ (kg/m³)","Score"});
     resultsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     resultsTable->horizontalHeader()->setDefaultSectionSize(90);
     resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -260,6 +296,7 @@ void MainWindow::setupUI()
     resultsTable->setAlternatingRowColors(true);
     resultsTable->verticalHeader()->setVisible(false);
     resultsTable->setShowGrid(true);
+    resultsTable->setCursor(Qt::PointingHandCursor);
     resultsTable->setStyleSheet(R"(
         QTableWidget { background:#ffffff; font-size:12px;
                        border:none; gridline-color:#eeeeee; }
@@ -281,6 +318,8 @@ void MainWindow::setupUI()
             this, &MainWindow::onAddConstraintClicked);
     connect(clearConstraintsBtn, &QPushButton::clicked,
             this, &MainWindow::onClearConstraintsClicked);
+    connect(resultsTable,        &QTableWidget::cellClicked,
+            this, &MainWindow::onTableRowClicked);
 
     totalLabel->setText("Total: " + QString::number(allMaterials.size()));
 }
@@ -346,7 +385,6 @@ void MainWindow::onRunClicked()
 
     Filtered_Materials.clear();
 
-    // apply family filter first
     QString family = familyCombo->currentText();
     std::vector<Material> pool;
     if (family == "All") {
@@ -410,12 +448,126 @@ void MainWindow::populateTable()
         resultsTable->setItem(i, 1, item(QString::fromStdString(m.name), i == 0));
         resultsTable->setItem(i, 2, item(QString::fromStdString(m.family)));
         resultsTable->setItem(i, 3, item(QString::number(m.mech.modulus,  'f', 1)));
-        resultsTable->setItem(i, 4, item(QString::number(m.mech.density,  'f', 2)));
+        resultsTable->setItem(i, 4, item(QString::number(m.mech.density,  'f', 0)));
         resultsTable->setItem(i, 5, item(QString::number(m.performance_score, 'e', 4)));
 
         if (i == 0) {
             for (int col = 0; col < 6; col++)
-                resultsTable->item(i, col)->setBackground(QColor(0xdd, 0xee, 0xff));
+                resultsTable->item(i, col)->setBackground(
+                    QColor(0xdd, 0xee, 0xff));
         }
     }
+}
+
+void MainWindow::onTableRowClicked(int row, int /*column*/)
+{
+    if (row < 0 || row >= (int)Filtered_Materials.size()) return;
+    showMaterialDetail(Filtered_Materials[row]);
+}
+
+void MainWindow::showMaterialDetail(const Material &m)
+{
+    QDialog *dlg = new QDialog(this);
+    dlg->setWindowTitle(QString::fromStdString(m.name) + " — Full Properties");
+    dlg->setMinimumWidth(440);
+    dlg->setStyleSheet(R"(
+        QDialog   { background:#ffffff; }
+        QLabel    { font-size: 12px; color: #222222; }
+        QGroupBox { font-size: 12px; font-weight: bold; color: #444444;
+                    border: 1px solid #dddddd; border-radius: 6px;
+                    margin-top: 10px; padding: 8px 6px 6px 6px; }
+        QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
+        QPushButton { border: 1px solid #cccccc; border-radius: 4px;
+                      padding: 6px 20px; background: #fafafa;
+                      font-size: 12px; }
+        QPushButton:hover { background: #eeeeee; }
+    )");
+
+    QVBoxLayout *main = new QVBoxLayout(dlg);
+    main->setSpacing(8);
+    main->setContentsMargins(16, 16, 16, 16);
+
+    // header
+    QLabel *nameLabel = new QLabel(QString::fromStdString(m.name));
+    nameLabel->setStyleSheet("font-size:16px; font-weight:bold; color:#185FA5;");
+    QLabel *famLabel  = new QLabel("Family: " + QString::fromStdString(m.family));
+    famLabel->setStyleSheet("font-size:12px; color:#666666;");
+    main->addWidget(nameLabel);
+    main->addWidget(famLabel);
+
+    QFrame *line = new QFrame();
+    line->setFrameShape(QFrame::HLine);
+    line->setStyleSheet("color:#dddddd;");
+    main->addWidget(line);
+
+    auto addGroup = [&](const QString &title,
+                        const QList<QPair<QString,QString>> &rows)
+    {
+        QGroupBox *grp = new QGroupBox(title);
+        QFormLayout *form = new QFormLayout(grp);
+        form->setSpacing(6);
+        form->setHorizontalSpacing(24);
+        for (const auto &r : rows) {
+            QLabel *val = new QLabel(r.second);
+            val->setStyleSheet("color:#222222; font-weight:bold;");
+            form->addRow(r.first + ":", val);
+        }
+        main->addWidget(grp);
+    };
+
+    addGroup("Mechanical", {
+                               {"Young's Modulus",     QString::number(m.mech.modulus,        'f', 1) + " GPa"},
+                               {"Density",             QString::number(m.mech.density,        'f', 0) + " kg/m³"},
+                               {"Tensile Strength",    QString::number(m.mech.tensileStrength,'f', 1) + " MPa"},
+                               {"Hardness",            QString::number(m.mech.hardness,       'f', 2) + " Mohs"},
+                               {"Poisson's Ratio",     QString::number(m.mech.p_ratio,        'f', 3)}
+                           });
+
+    addGroup("Thermal", {
+                            {"Conductivity",        QString::number(m.therm.conductivity,  'f', 2) + " W/mK"},
+                            {"Melting Point",       QString::number(m.therm.meltingpoint,  'f', 0) + " °C"},
+                            {"Thermal Expansion",   QString::number(m.therm.expansion,     'f', 2) + " ×10⁻⁶/K"},
+                            {"Heat Capacity",       QString::number(m.therm.heatcapacity,  'f', 1) + " J/kgK"}
+                        });
+
+    addGroup("Electrical", {
+                               {"Resistivity",         QString::number(m.elec.resistivity,    'e', 3) + " Ω·m"},
+                               {"Dielectric Constant", QString::number(m.elec.d_constant,     'f', 2)}
+                           });
+
+    addGroup("Optical", {
+                            {"Refractive Index",    QString::number(m.optics.refractive_index, 'f', 3)},
+                            {"Transparency",        QString::fromStdString(m.optics.transparency)}
+                        });
+
+    addGroup("Chemical", {
+                             {"Corrosion Resistance", QString::fromStdString(m.chem.corrosion_resistance)},
+                             {"pH Range",             QString::number(m.chem.ph_min, 'f', 1)
+                                              + " – " + QString::number(m.chem.ph_max, 'f', 1)}
+                         });
+
+    QLabel *scoreLabel = new QLabel(
+        "Performance Score:  " +
+        QString::number(m.performance_score, 'e', 4));
+    scoreLabel->setStyleSheet(
+        "font-size:13px; font-weight:bold; color:#185FA5; padding:8px 0;");
+    main->addWidget(scoreLabel);
+
+    // close button with proper label
+    QPushButton *closeBtn = new QPushButton("Close");
+    closeBtn->setFixedWidth(100);
+    closeBtn->setStyleSheet(R"(
+        QPushButton { background:#185FA5; color:white; font-size:12px;
+                      font-weight:bold; border-radius:4px; border:none;
+                      padding:6px 20px; }
+        QPushButton:hover { background:#1a6dbf; }
+    )");
+    connect(closeBtn, &QPushButton::clicked, dlg, &QDialog::accept);
+
+    QHBoxLayout *btnRow = new QHBoxLayout();
+    btnRow->addStretch();
+    btnRow->addWidget(closeBtn);
+    main->addLayout(btnRow);
+
+    dlg->exec();
 }

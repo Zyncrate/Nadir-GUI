@@ -8,7 +8,8 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QListWidget>
-#include <QButtonGroup>
+#include <QDialog>
+#include <QScrollArea>
 #include "../include/globals.h"
 
 QT_BEGIN_NAMESPACE
@@ -23,14 +24,20 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
+
 private slots:
     void onRunClicked();
     void onAddConstraintClicked();
     void onClearConstraintsClicked();
     void onRemoveConstraintClicked();
+    void onTableRowClicked(int row, int column);
 
 private:
     Ui::MainWindow *ui;
+
+    QScrollArea  *sideScroll;
 
     // sidebar widgets
     QComboBox    *methodCombo;
@@ -59,6 +66,7 @@ private:
     void setupUI();
     void populateTable();
     void refreshConstraintList();
+    void showMaterialDetail(const Material &m);
 };
 
 #endif // MAINWINDOW_H
