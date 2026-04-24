@@ -7,6 +7,7 @@
 #include <QMessageBox>
 #include <QLabel>
 #include <QString>
+#include <QScrollArea>
 #include <algorithm>
 
 void loadDataFromDB();
@@ -14,17 +15,46 @@ void Categorize();
 void Filter(std::vector<Material>&allMaterials, std::vector<t_HC>&Hard_Constraints);
 void Selection_Method2(std::vector<Material>&Filtered_Materials, std::string objectives, std::string geometry, std::string constraint, bool option);
 
+static const QString BASE_STYLE = R"(
+    QWidget       { background: #ffffff; color: #222222; font-size: 12px; }
+    QGroupBox     { font-size: 12px; font-weight: bold; color: #444444;
+                    border: 1px solid #dddddd; border-radius: 6px;
+                    margin-top: 10px; padding: 8px 6px 6px 6px; }
+    QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
+    QComboBox     { border: 1px solid #cccccc; border-radius: 4px;
+                    padding: 4px 8px; background: #fafafa;
+                    combobox-popup: 0; }
+    QComboBox:hover { border-color: #185FA5; }
+    QComboBox QAbstractItemView {
+                    border: 1px solid #cccccc;
+                    background: #ffffff;
+                    selection-background-color: #ddeeff;
+                    selection-color: #222222;
+                    outline: none; }
+    QLineEdit     { border: 1px solid #cccccc; border-radius: 4px;
+                    padding: 4px 8px; background: #fafafa; }
+    QLineEdit:focus { border-color: #185FA5; }
+    QLabel        { color: #555555; }
+    QPushButton   { border: 1px solid #cccccc; border-radius: 4px;
+                    padding: 5px 10px; background: #fafafa; }
+    QPushButton:hover   { background: #eeeeee; }
+    QPushButton:pressed { background: #e0e0e0; }
+    QListWidget   { border: 1px solid #dddddd; border-radius: 4px;
+                    background: #fafafa; font-size: 11px; }
+    QListWidget::item { padding: 4px 6px; border-bottom: 1px solid #eeeeee; }
+    QListWidget::item:selected { background: #ddeeff; color: #222222; }
+)";
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
     setWindowTitle("Material Selection Engine");
-    resize(1100, 650);
+    resize(1100, 680);
 
     loadDataFromDB();
     Categorize();
-
     setupUI();
 }
 
@@ -35,7 +65,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupUI()
 {
-    // root widget
     QWidget *central = new QWidget(this);
     central->setStyleSheet("background: #f5f5f5;");
     setCentralWidget(central);
@@ -45,41 +74,38 @@ void MainWindow::setupUI()
     root->setSpacing(0);
 
     // ── SIDEBAR ──────────────────────────────────────────────
-    QWidget *sidebar = new QWidget();
-    sidebar->setFixedWidth(270);
-    sidebar->setStyleSheet(R"(
-        QWidget       { background: #ffffff; color: #222222; }
-        QGroupBox     { font-size: 12px; font-weight: bold; color: #444444;
-                        border: 1px solid #dddddd; border-radius: 6px;
-                        margin-top: 10px; padding: 8px 6px 6px 6px; }
-        QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }
-        QComboBox     { border: 1px solid #cccccc; border-radius: 4px;
-                        padding: 4px 8px; font-size: 12px; background: #fafafa; }
-        QComboBox:hover { border-color: #185FA5; }
-        QLineEdit     { border: 1px solid #cccccc; border-radius: 4px;
-                        padding: 4px 8px; font-size: 12px; background: #fafafa; }
-        QLineEdit:focus { border-color: #185FA5; }
-        QLabel        { font-size: 12px; color: #555555; }
-        QPushButton   { border: 1px solid #cccccc; border-radius: 4px;
-                        padding: 5px 10px; font-size: 12px; background: #fafafa; }
-        QPushButton:hover  { background: #eeeeee; }
-        QPushButton:pressed { background: #e0e0e0; }
-    )");
+    QScrollArea *scroll = new QScrollArea();
+    scroll->setFixedWidth(290);
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setStyleSheet("QScrollArea { border: none; border-right: 1px solid #dddddd; }");
 
+    QWidget *sidebar = new QWidget();
+    sidebar->setStyleSheet(BASE_STYLE);
     QVBoxLayout *sideLayout = new QVBoxLayout(sidebar);
     sideLayout->setContentsMargins(12, 12, 12, 12);
     sideLayout->setSpacing(10);
 
-    // scoring method group
+    // -- family filter --
+    QGroupBox *familyGroup = new QGroupBox("Material Family");
+    QVBoxLayout *familyLayout = new QVBoxLayout(familyGroup);
+    familyLayout->setSpacing(6);
+    familyCombo = new QComboBox();
+    familyCombo->addItems({"All","Metal","Ceramic","Polymer",
+                           "Composite","Semiconductor","Natural"});
+    familyLayout->addWidget(familyCombo);
+    sideLayout->addWidget(familyGroup);
+
+    // -- scoring method --
     QGroupBox *methodGroup = new QGroupBox("Scoring Method");
     QVBoxLayout *methodLayout = new QVBoxLayout(methodGroup);
     methodLayout->setSpacing(6);
     methodCombo = new QComboBox();
-    methodCombo->addItems({"Ashby", "WPI", "TOPSIS"});
+    methodCombo->addItems({"Ashby","WPI","TOPSIS"});
     methodLayout->addWidget(methodCombo);
     sideLayout->addWidget(methodGroup);
 
-    // ashby parameters group
+    // -- ashby parameters --
     QGroupBox *ashbyGroup = new QGroupBox("Ashby Parameters");
     QVBoxLayout *ashbyLayout = new QVBoxLayout(ashbyGroup);
     ashbyLayout->setSpacing(6);
@@ -91,7 +117,8 @@ void MainWindow::setupUI()
 
     ashbyLayout->addWidget(new QLabel("Constraint Property"));
     constraintCombo = new QComboBox();
-    constraintCombo->addItems({"stiffness","toughness","thermal-conductivity","electrical-resistivity"});
+    constraintCombo->addItems({"stiffness","toughness",
+                               "thermal-conductivity","electrical-resistivity"});
     ashbyLayout->addWidget(constraintCombo);
 
     ashbyLayout->addWidget(new QLabel("Geometry"));
@@ -99,9 +126,36 @@ void MainWindow::setupUI()
     geometryCombo->addItems({"bending","tension","plate","torsion"});
     ashbyLayout->addWidget(geometryCombo);
 
+    ashbyLayout->addWidget(new QLabel("Optimise for"));
+    QHBoxLayout *optRow = new QHBoxLayout();
+    optRow->setSpacing(4);
+    minimizeBtn = new QPushButton("Minimize");
+    maximizeBtn = new QPushButton("Maximize");
+    minimizeBtn->setCheckable(true);
+    maximizeBtn->setCheckable(true);
+    minimizeBtn->setChecked(true);
+    minimizeBtn->setStyleSheet(
+        "QPushButton:checked { background:#185FA5; color:white; border-color:#185FA5; }");
+    maximizeBtn->setStyleSheet(
+        "QPushButton:checked { background:#185FA5; color:white; border-color:#185FA5; }");
+    optRow->addWidget(minimizeBtn);
+    optRow->addWidget(maximizeBtn);
+    ashbyLayout->addLayout(optRow);
+
+    connect(minimizeBtn, &QPushButton::clicked, this, [this](){
+        optimiseMaximize = false;
+        minimizeBtn->setChecked(true);
+        maximizeBtn->setChecked(false);
+    });
+    connect(maximizeBtn, &QPushButton::clicked, this, [this](){
+        optimiseMaximize = true;
+        maximizeBtn->setChecked(true);
+        minimizeBtn->setChecked(false);
+    });
+
     sideLayout->addWidget(ashbyGroup);
 
-    // hard constraints group
+    // -- hard constraints --
     QGroupBox *constraintGroup = new QGroupBox("Hard Constraints");
     QVBoxLayout *constraintLayout = new QVBoxLayout(constraintGroup);
     constraintLayout->setSpacing(6);
@@ -128,10 +182,24 @@ void MainWindow::setupUI()
     opRow->addWidget(valueInput);
     constraintLayout->addLayout(opRow);
 
-    addConstraintBtn = new QPushButton("+ Add Constraint");
+    QHBoxLayout *btnRow = new QHBoxLayout();
+    btnRow->setSpacing(6);
+    addConstraintBtn    = new QPushButton("+ Add");
     clearConstraintsBtn = new QPushButton("Clear All");
-    constraintLayout->addWidget(addConstraintBtn);
-    constraintLayout->addWidget(clearConstraintsBtn);
+    btnRow->addWidget(addConstraintBtn);
+    btnRow->addWidget(clearConstraintsBtn);
+    constraintLayout->addLayout(btnRow);
+
+    constraintLayout->addWidget(new QLabel("Active constraints:"));
+    constraintList = new QListWidget();
+    constraintList->setFixedHeight(100);
+    constraintList->setToolTip("Select a constraint then click Remove to delete it");
+    constraintLayout->addWidget(constraintList);
+
+    QPushButton *removeBtn = new QPushButton("Remove Selected");
+    constraintLayout->addWidget(removeBtn);
+    connect(removeBtn, &QPushButton::clicked,
+            this, &MainWindow::onRemoveConstraintClicked);
 
     sideLayout->addWidget(constraintGroup);
     sideLayout->addStretch();
@@ -140,20 +208,19 @@ void MainWindow::setupUI()
     runBtn = new QPushButton("Run Selection");
     runBtn->setFixedHeight(38);
     runBtn->setStyleSheet(R"(
-        QPushButton {
-            background: #185FA5; color: white; font-size: 13px;
-            font-weight: bold; border-radius: 6px; border: none;
-        }
-        QPushButton:hover   { background: #1a6dbf; }
-        QPushButton:pressed { background: #134d87; }
+        QPushButton { background:#185FA5; color:white; font-size:13px;
+                      font-weight:bold; border-radius:6px; border:none; }
+        QPushButton:hover   { background:#1a6dbf; }
+        QPushButton:pressed { background:#134d87; }
     )");
     sideLayout->addWidget(runBtn);
 
-    root->addWidget(sidebar);
+    scroll->setWidget(sidebar);
+    root->addWidget(scroll);
 
     // ── MAIN PANEL ───────────────────────────────────────────
     QWidget *mainPanel = new QWidget();
-    mainPanel->setStyleSheet("background: #f5f5f5;");
+    mainPanel->setStyleSheet("background:#f5f5f5;");
     QVBoxLayout *panelLayout = new QVBoxLayout(mainPanel);
     panelLayout->setContentsMargins(0, 0, 0, 0);
     panelLayout->setSpacing(0);
@@ -161,7 +228,8 @@ void MainWindow::setupUI()
     // stats bar
     QWidget *statsBar = new QWidget();
     statsBar->setFixedHeight(52);
-    statsBar->setStyleSheet("background: #ffffff; border-bottom: 1px solid #dddddd;");
+    statsBar->setStyleSheet(
+        "background:#ffffff; border-bottom:1px solid #dddddd;");
     QHBoxLayout *statsLayout = new QHBoxLayout(statsBar);
     statsLayout->setContentsMargins(16, 0, 16, 0);
     statsLayout->setSpacing(24);
@@ -169,11 +237,10 @@ void MainWindow::setupUI()
     totalLabel       = new QLabel("Total: 0");
     filteredLabel    = new QLabel("Filtered: 0");
     topMaterialLabel = new QLabel("Top material: —");
-
-    QString statStyle = "font-size: 13px; color: #333333;";
-    totalLabel->setStyleSheet(statStyle);
-    filteredLabel->setStyleSheet(statStyle);
-    topMaterialLabel->setStyleSheet("font-size: 13px; font-weight: bold; color: #185FA5;");
+    totalLabel->setStyleSheet("font-size:13px; color:#333333;");
+    filteredLabel->setStyleSheet("font-size:13px; color:#333333;");
+    topMaterialLabel->setStyleSheet(
+        "font-size:13px; font-weight:bold; color:#185FA5;");
 
     statsLayout->addWidget(totalLabel);
     statsLayout->addWidget(filteredLabel);
@@ -184,7 +251,8 @@ void MainWindow::setupUI()
     // results table
     resultsTable = new QTableWidget();
     resultsTable->setColumnCount(6);
-    resultsTable->setHorizontalHeaderLabels({"#","Material","Family","E (GPa)","ρ (g/cm³)","Score"});
+    resultsTable->setHorizontalHeaderLabels(
+        {"#","Material","Family","E (GPa)","ρ (g/cm³)","Score"});
     resultsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     resultsTable->horizontalHeader()->setDefaultSectionSize(90);
     resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -193,30 +261,39 @@ void MainWindow::setupUI()
     resultsTable->verticalHeader()->setVisible(false);
     resultsTable->setShowGrid(true);
     resultsTable->setStyleSheet(R"(
-        QTableWidget {
-            background: #ffffff; font-size: 12px;
-            border: none; gridline-color: #eeeeee;
-        }
-        QHeaderView::section {
-            background: #f0f0f0; color: #444444;
-            font-size: 11px; font-weight: bold;
-            padding: 6px; border: none;
-            border-bottom: 1px solid #dddddd;
-        }
-        QTableWidget::item { padding: 6px 10px; color: #222222; }
-        QTableWidget::item:selected { background: #ddeeff; color: #222222; }
-        QTableWidget::item:alternate { background: #fafafa; }
+        QTableWidget { background:#ffffff; font-size:12px;
+                       border:none; gridline-color:#eeeeee; }
+        QHeaderView::section { background:#f0f0f0; color:#444444;
+                               font-size:11px; font-weight:bold;
+                               padding:6px; border:none;
+                               border-bottom:1px solid #dddddd; }
+        QTableWidget::item           { padding:6px 10px; color:#222222; }
+        QTableWidget::item:selected  { background:#ddeeff; color:#222222; }
+        QTableWidget::item:alternate { background:#fafafa; }
     )");
     panelLayout->addWidget(resultsTable);
-
     root->addWidget(mainPanel);
 
-    // ── SIGNALS ──────────────────────────────────────────────
-    connect(runBtn,             &QPushButton::clicked, this, &MainWindow::onRunClicked);
-    connect(addConstraintBtn,   &QPushButton::clicked, this, &MainWindow::onAddConstraintClicked);
-    connect(clearConstraintsBtn,&QPushButton::clicked, this, &MainWindow::onClearConstraintsClicked);
+    // signals
+    connect(runBtn,              &QPushButton::clicked,
+            this, &MainWindow::onRunClicked);
+    connect(addConstraintBtn,    &QPushButton::clicked,
+            this, &MainWindow::onAddConstraintClicked);
+    connect(clearConstraintsBtn, &QPushButton::clicked,
+            this, &MainWindow::onClearConstraintsClicked);
 
     totalLabel->setText("Total: " + QString::number(allMaterials.size()));
+}
+
+void MainWindow::refreshConstraintList()
+{
+    constraintList->clear();
+    for (const auto &c : Hard_Constraints) {
+        QString entry = QString::fromStdString(c.property_name)
+        + "  " + QString::fromStdString(c.symbol)
+            + "  " + QString::number(c.value);
+        constraintList->addItem(entry);
+    }
 }
 
 void MainWindow::onAddConstraintClicked()
@@ -238,14 +315,22 @@ void MainWindow::onAddConstraintClicked()
     Hard_Constraints.push_back(c);
 
     valueInput->clear();
-    QMessageBox::information(this, "Constraint Added",
-                             prop + " " + op + " " + val + " added.");
+    refreshConstraintList();
+}
+
+void MainWindow::onRemoveConstraintClicked()
+{
+    int row = constraintList->currentRow();
+    if (row < 0 || row >= (int)Hard_Constraints.size()) return;
+    Hard_Constraints.erase(Hard_Constraints.begin() + row);
+    refreshConstraintList();
 }
 
 void MainWindow::onClearConstraintsClicked()
 {
     Hard_Constraints.clear();
     Filtered_Materials.clear();
+    constraintList->clear();
     resultsTable->setRowCount(0);
     filteredLabel->setText("Filtered: 0");
     topMaterialLabel->setText("Top material: —");
@@ -254,15 +339,29 @@ void MainWindow::onClearConstraintsClicked()
 void MainWindow::onRunClicked()
 {
     if (Hard_Constraints.empty()) {
-        QMessageBox::warning(this, "No Constraints", "Add at least one constraint before running.");
+        QMessageBox::warning(this, "No Constraints",
+                             "Add at least one constraint before running.");
         return;
     }
 
     Filtered_Materials.clear();
-    Filter(allMaterials, Hard_Constraints);
+
+    // apply family filter first
+    QString family = familyCombo->currentText();
+    std::vector<Material> pool;
+    if (family == "All") {
+        pool = allMaterials;
+    } else {
+        for (const auto &m : allMaterials)
+            if (QString::fromStdString(m.family) == family)
+                pool.push_back(m);
+    }
+
+    Filter(pool, Hard_Constraints);
 
     if (Filtered_Materials.empty()) {
-        QMessageBox::information(this, "No Results", "No materials passed the constraints.");
+        QMessageBox::information(this, "No Results",
+                                 "No materials passed the constraints.");
         filteredLabel->setText("Filtered: 0");
         topMaterialLabel->setText("Top material: —");
         resultsTable->setRowCount(0);
@@ -273,14 +372,15 @@ void MainWindow::onRunClicked()
     std::string geo = geometryCombo->currentText().toStdString();
     std::string con = constraintCombo->currentText().toStdString();
 
-    Selection_Method2(Filtered_Materials, obj, geo, con, false);
+    Selection_Method2(Filtered_Materials, obj, geo, con, optimiseMaximize);
 
     std::sort(Filtered_Materials.begin(), Filtered_Materials.end(),
               [](const Material &a, const Material &b){
                   return a.performance_score > b.performance_score;
               });
 
-    filteredLabel->setText("Filtered: " + QString::number(Filtered_Materials.size()));
+    filteredLabel->setText("Filtered: " +
+                           QString::number(Filtered_Materials.size()));
     topMaterialLabel->setText("Top material: " +
                               QString::fromStdString(Filtered_Materials[0].name));
 
@@ -314,9 +414,8 @@ void MainWindow::populateTable()
         resultsTable->setItem(i, 5, item(QString::number(m.performance_score, 'e', 4)));
 
         if (i == 0) {
-            for (int col = 0; col < 6; col++) {
-                resultsTable->item(i, col)->setBackground(QColor("#ddeeff"));
-            }
+            for (int col = 0; col < 6; col++)
+                resultsTable->item(i, col)->setBackground(QColor(0xdd, 0xee, 0xff));
         }
     }
 }
