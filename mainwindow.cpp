@@ -69,7 +69,6 @@ static const QString BASE_STYLE = R"(
         color: #F5F7FA;
     }
     QLineEdit:focus { border-color: #6F7CFF; }
-    QLineEdit::placeholder { color: #445566; }
     QLabel { color: #a0aec0; }
     QPushButton {
         border: 1px solid #1a2a40;
@@ -141,7 +140,7 @@ static const QString TABLE_STYLE = R"(
 
 static const QString DIALOG_STYLE = R"(
     QDialog { background: #081120; }
-    QLabel  { font-size: 12px; color: #a0aec0; }
+    QLabel  { font-size: 12px; color: #cbd5e0; }
     QGroupBox {
         font-size: 12px; font-weight: bold; color: #4FD1C5;
         border: 1px solid #1a2a40; border-radius: 6px;
@@ -208,10 +207,12 @@ void MainWindow::setupUI()
     sideScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     sideScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     sideScroll->setStyleSheet(
-        "QScrollArea { border: none; border-right: 1px solid #1a2a40; background:#081120; }"
+        "QScrollArea { border: none; border-right: 1px solid #1a2a40;"
+        " background:#081120; }"
         "QScrollBar:vertical { width: 6px; background: #081120; }"
         "QScrollBar::handle:vertical { background: #1a2a40; border-radius: 3px; }"
-        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
+        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical"
+        " { height: 0px; }"
         );
     sideScroll->viewport()->installEventFilter(this);
 
@@ -289,9 +290,11 @@ void MainWindow::setupUI()
     maximizeBtn->setCheckable(true);
     minimizeBtn->setChecked(true);
     minimizeBtn->setStyleSheet(
-        "QPushButton:checked { background:#6F7CFF; color:white; border-color:#6F7CFF; }");
+        "QPushButton:checked { background:#6F7CFF;"
+        " color:white; border-color:#6F7CFF; }");
     maximizeBtn->setStyleSheet(
-        "QPushButton:checked { background:#6F7CFF; color:white; border-color:#6F7CFF; }");
+        "QPushButton:checked { background:#6F7CFF;"
+        " color:white; border-color:#6F7CFF; }");
     optRow->addWidget(minimizeBtn);
     optRow->addWidget(maximizeBtn);
     ashbyLayout->addLayout(optRow);
@@ -348,7 +351,8 @@ void MainWindow::setupUI()
     constraintList = new QListWidget();
     constraintList->setMinimumHeight(80);
     constraintList->setMaximumHeight(160);
-    constraintList->setToolTip("Select a constraint then click Remove to delete it");
+    constraintList->setToolTip(
+        "Select a constraint then click Remove to delete it");
     constraintLayout->addWidget(constraintList);
 
     QPushButton *removeBtn = new QPushButton("Remove Selected");
@@ -408,7 +412,8 @@ void MainWindow::setupUI()
     panelLayout->addWidget(statsBar);
 
     // hint
-    QLabel *hint = new QLabel("  Click any row to view full material properties");
+    QLabel *hint = new QLabel(
+        "  Click any row to view full material properties");
     hint->setStyleSheet(
         "font-size:11px; color:#445566; background:#081120;"
         "border-bottom:1px solid #1a2a40; padding:4px 12px;");
@@ -420,7 +425,8 @@ void MainWindow::setupUI()
     resultsTable->setColumnCount(6);
     resultsTable->setHorizontalHeaderLabels(
         {"#","Material","Family","E (GPa)","ρ (kg/m³)","Score"});
-    resultsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    resultsTable->horizontalHeader()->setSectionResizeMode(
+        1, QHeaderView::Stretch);
     resultsTable->horizontalHeader()->setDefaultSectionSize(90);
     resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -566,13 +572,17 @@ void MainWindow::populateTable()
         };
 
         resultsTable->setItem(i, 0, item(QString::number(i + 1)));
-        resultsTable->setItem(i, 1, item(QString::fromStdString(m.name), i == 0));
-        resultsTable->setItem(i, 2, item(QString::fromStdString(m.family)));
-        resultsTable->setItem(i, 3, item(QString::number(m.mech.modulus,  'f', 1)));
-        resultsTable->setItem(i, 4, item(QString::number(m.mech.density,  'f', 0)));
-        resultsTable->setItem(i, 5, item(QString::number(m.performance_score, 'e', 4)));
+        resultsTable->setItem(i, 1,
+                              item(QString::fromStdString(m.name), i == 0));
+        resultsTable->setItem(i, 2,
+                              item(QString::fromStdString(m.family)));
+        resultsTable->setItem(i, 3,
+                              item(QString::number(m.mech.modulus,  'f', 1)));
+        resultsTable->setItem(i, 4,
+                              item(QString::number(m.mech.density,  'f', 0)));
+        resultsTable->setItem(i, 5,
+                              item(QString::number(m.performance_score, 'e', 4)));
 
-        // highlight top material with teal accent
         if (i == 0) {
             for (int col = 0; col < 6; col++)
                 resultsTable->item(i, col)->setBackground(
@@ -595,9 +605,9 @@ void MainWindow::showMaterialDetail(const Material &m)
     dlg->setMinimumWidth(460);
     dlg->setStyleSheet(DIALOG_STYLE);
 
-    QVBoxLayout *main = new QVBoxLayout(dlg);
-    main->setSpacing(8);
-    main->setContentsMargins(16, 16, 16, 16);
+    QVBoxLayout *mainLayout = new QVBoxLayout(dlg);
+    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
 
     // header
     QLabel *nameLabel = new QLabel(QString::fromStdString(m.name));
@@ -606,14 +616,15 @@ void MainWindow::showMaterialDetail(const Material &m)
     QLabel *famLabel = new QLabel("Family: " +
                                   QString::fromStdString(m.family));
     famLabel->setStyleSheet("font-size:12px; color:#4FD1C5;");
-    main->addWidget(nameLabel);
-    main->addWidget(famLabel);
+    mainLayout->addWidget(nameLabel);
+    mainLayout->addWidget(famLabel);
 
     QFrame *line = new QFrame();
     line->setFrameShape(QFrame::HLine);
     line->setStyleSheet("color:#1a2a40;");
-    main->addWidget(line);
+    mainLayout->addWidget(line);
 
+    // addGroup — key labels are now clearly readable
     auto addGroup = [&](const QString &title,
                         const QList<QPair<QString,QString>> &rows)
     {
@@ -622,11 +633,13 @@ void MainWindow::showMaterialDetail(const Material &m)
         form->setSpacing(6);
         form->setHorizontalSpacing(24);
         for (const auto &r : rows) {
+            QLabel *key = new QLabel(r.first + ":");
+            key->setStyleSheet("color:#cbd5e0;");  // light readable grey
             QLabel *val = new QLabel(r.second);
             val->setStyleSheet("color:#F5F7FA; font-weight:bold;");
-            form->addRow(r.first + ":", val);
+            form->addRow(key, val);
         }
-        main->addWidget(grp);
+        mainLayout->addWidget(grp);
     };
 
     addGroup("Mechanical", {
@@ -655,9 +668,11 @@ void MainWindow::showMaterialDetail(const Material &m)
                         });
 
     addGroup("Chemical", {
-                             {"Corrosion Resistance", QString::fromStdString(m.chem.corrosion_resistance)},
-                             {"pH Range",             QString::number(m.chem.ph_min,'f',1)
-                                              + " – " + QString::number(m.chem.ph_max,'f',1)}
+                             {"Corrosion Resistance",
+                              QString::fromStdString(m.chem.corrosion_resistance)},
+                             {"pH Range",
+                              QString::number(m.chem.ph_min,'f',1) + " – " +
+                                  QString::number(m.chem.ph_max,'f',1)}
                          });
 
     QLabel *scoreLabel = new QLabel(
@@ -665,7 +680,7 @@ void MainWindow::showMaterialDetail(const Material &m)
         QString::number(m.performance_score, 'e', 4));
     scoreLabel->setStyleSheet(
         "font-size:13px; font-weight:bold; color:#4FD1C5; padding:8px 0;");
-    main->addWidget(scoreLabel);
+    mainLayout->addWidget(scoreLabel);
 
     QPushButton *closeBtn = new QPushButton("Close");
     closeBtn->setFixedWidth(100);
@@ -683,7 +698,7 @@ void MainWindow::showMaterialDetail(const Material &m)
     QHBoxLayout *btnRow = new QHBoxLayout();
     btnRow->addStretch();
     btnRow->addWidget(closeBtn);
-    main->addLayout(btnRow);
+    mainLayout->addLayout(btnRow);
 
     dlg->exec();
 }
