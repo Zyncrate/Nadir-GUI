@@ -1,1 +1,31 @@
+# Build folders
 build/
+CMakeFiles/
+*.o
+*.obj
+*.a
+
+# CMake generated
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+_ninja_deps
+_ninja_log
+build.ninja
+
+# Qt generated
+*.user
+*.autosave
+moc_*
+ui_*
+qrc_*
+
+# Windows
+*.exe
+*.dll
+Thumbs.db
+desktop.ini
+
+# Database in build
+build/materials.db
